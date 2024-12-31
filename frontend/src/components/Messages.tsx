@@ -19,48 +19,54 @@ export default function Messages({ username }: { username: string }) {
 
   const [selectedUser, SetSelectedUser] = useState<string>("");
   const [message, setMessage] = useState<string>("");
-  const [messages, setMessages] = useState<MessageOfUsers[]>([]); // i should have just used map lol
+  const [messages, setMessages] = useState<Map<string, Message[]>>(new Map()); // i should have just used map lol
 
   function handleSendMessage() {
     socket.emit("message", { recipient: selectedUser, message }, (res: Message) => {
       setMessages(prev => {
-        const index = prev.findIndex((val) => val.username === selectedUser);
-        if (index === -1) {
-          // never sent before
-          return [...prev, { username: selectedUser, messages: [res] }];
+        const newMap = new Map(prev);
+        if (!newMap.has(res.recipient)) {
+          newMap.set(res.recipient, [res]);
         } else {
-          // add the new message
-          prev[index].messages.push(res);
-          return [...prev];
+          newMap.set(res.recipient, [...(newMap.get(res.recipient) || []), res])
         }
+
+        return newMap;
       })
     })
+
+    setMessage(""); // clear message
   }
 
   function handleAddUser() {
-    // plesae dont add users that are already present :(
-    setMessages(prev => [...prev, { username: userSearch, messages: []}]);
-    SetSelectedUser(userSearch);
+    if (!messages.has(userSearch)) {
+      setMessages(prev => {
+        const newMap = new Map(prev);
+        newMap.set(userSearch, []);
+        return newMap;
+      })
+    }
   }
 
   useEffect(() => {
     socket.emit("get-all", (res: MessageOfUsers[]) => {
       console.log("refreshing all messages")
-      setMessages(res);
+      const map = new Map<string, Message[]>();
+      res.forEach(message => map.set(message.username, message.messages));
+      setMessages(map);
     });
 
     function handleReceiveMessage(message: Message) {
       console.log(message);
       setMessages(prev => {
-        const index = prev.findIndex((val) => val.username === message.from);
-        if (index === -1) {
-          // never sent before
-          return [...prev, { username: message.from, messages: [message] }];
+        const newMap = new Map(prev);
+        if (!newMap.has(message.from)) {
+          newMap.set(message.from, [message]);
         } else {
-          // add the new message
-          prev[index].messages.push(message);
-          return [...prev];
+          newMap.set(message.from, [...(newMap.get(message.from) || []), message]);
         }
+
+        return newMap;
       })
     }
 
@@ -78,18 +84,18 @@ export default function Messages({ username }: { username: string }) {
       <button onClick={handleAddUser} disabled={!userSearch}>Add</button>
       <div className="flex">
       {
-        messages.map(message => (
+        [...messages.keys()].map(username => (
           <div 
-            className={`${message.username === selectedUser ? "bg-indigo-300" : "bg-indigo-100"} border-2 border-indigo-700`}
-            key={message.username} 
-            onClick={() => SetSelectedUser(message.username)}
-            >{ message.username }</div>
+            className={`${username === selectedUser ? "bg-indigo-300" : "bg-indigo-100"} border-2 border-indigo-700`}
+            key={username} 
+            onClick={() => SetSelectedUser(username)}
+            >{ username }</div>
         ))
       }
       </div>
       <div>
       {
-        messages.find(val => val.username === selectedUser)?.messages.map((message, index) => (
+        messages.get(selectedUser)?.map((message, index) => (
           <div key={index}>
             <h2>{ message.from }</h2>
             <p> {message.message} </p>
