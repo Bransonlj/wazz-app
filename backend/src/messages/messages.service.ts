@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Message } from './schemas';
+import { Message, Status } from './schemas';
 import { Model } from 'mongoose';
 import { CreateMessageDto } from './dto';
 
@@ -22,5 +22,11 @@ export class MessagesService {
     }).sort({
       createdAt: 1 // asc
     });
+  }
+
+  async updateStatus(id: string, status: Status) {
+    this.messageModel.findByIdAndUpdate(id, {
+      status,
+    })
   }
 }

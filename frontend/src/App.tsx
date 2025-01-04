@@ -40,9 +40,14 @@ function App() {
   return (
     <div className="flex flex-col">
       <h2>{ isConnected ? "connected" : "disconnected" }</h2>
-      <label>Username</label>
-      <input value={username} placeholder="Enter username" onChange={e => setUsername(e.target.value)} className="border-indigo-700 border-2 rounded-md" />
-      <button disabled={!username} onClick={handleConnect}>Connect</button>
+      <label>Username { isConnected && username}</label>
+      {
+        !isConnected && 
+        <div>
+          <input value={username} placeholder="Enter username" onChange={e => setUsername(e.target.value)} className="border-indigo-700 border-2 rounded-md" />
+          <button disabled={!username} onClick={handleConnect}>Connect</button>
+        </div>
+      }
       {
         isConnected && <Messages username={username} />
       }

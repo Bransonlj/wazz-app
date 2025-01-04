@@ -1,56 +1,53 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { socket } from "../socket"
-
-interface Message {
-  message: string;
-  from: string;
-  recipient: string;
-  createdAt: Date;
-}
-
-interface MessageOfUsers {
-  username: string;
-  messages: Message[];
-}
+import { useNavigate, useParams } from "react-router";
+import { Message, MessageOfUser } from "../dto";
+import UserList from "./UserList";
+import MessageUser from "./MessageUser";
 
 export default function Messages({ username }: { username: string }) {
 
-  const [userSearch, setUserSearch] = useState<string>("");
+  const { id: selectedUser } = useParams()
+  const navigate = useNavigate()
 
-  const [selectedUser, SetSelectedUser] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
+  const [userSearch, setUserSearch] = useState<string>("");
   const [messages, setMessages] = useState<Map<string, Message[]>>(new Map()); // i should have just used map lol
 
-  function handleSendMessage() {
-    socket.emit("message", { recipient: selectedUser, message }, (res: Message) => {
-      setMessages(prev => {
-        const newMap = new Map(prev);
-        if (!newMap.has(res.recipient)) {
-          newMap.set(res.recipient, [res]);
-        } else {
-          newMap.set(res.recipient, [...(newMap.get(res.recipient) || []), res])
-        }
+  const consolidatedUsers = useMemo(() => { // maybe dont need this
+    const users = [...messages.keys()];
+    if (selectedUser && !users.includes(selectedUser)) {
+      users.unshift(selectedUser);
+    }
 
-        return newMap;
-      })
+    return users;
+  }, [messages, selectedUser]);
+
+  /**
+   * Callback function after successful sending of message through socket.
+   * Updates the list of messages with the message that was sent
+   */
+  function afterSendCallback(res: Message) {
+    setMessages(prev => {
+      const newMap = new Map(prev);
+      if (!newMap.has(res.recipient)) {
+        newMap.set(res.recipient, [res]);
+      } else {
+        newMap.set(res.recipient, [...(newMap.get(res.recipient) || []), res])
+      }
+
+      return newMap;
     })
-
-    setMessage(""); // clear message
   }
 
   function handleAddUser() {
-    if (!messages.has(userSearch)) {
-      setMessages(prev => {
-        const newMap = new Map(prev);
-        newMap.set(userSearch, []);
-        return newMap;
-      })
-    }
+    navigate(`/t/${userSearch}`);
   }
 
+
   useEffect(() => {
-    socket.emit("get-all", (res: MessageOfUsers[]) => {
+    socket.emit("get-all", (res: MessageOfUser[]) => {
       console.log("refreshing all messages")
+      // convert resposnse to map of users and messages
       const map = new Map<string, Message[]>();
       res.forEach(message => map.set(message.username, message.messages));
       setMessages(map);
@@ -75,36 +72,19 @@ export default function Messages({ username }: { username: string }) {
     return () => {
       socket.off("message", handleReceiveMessage);
     }
-
   },[username])
 
   return (
     <div>
       <input className="border-indigo-700 border-2 rounded-md" placeholder="find user" value={userSearch} onChange={e => setUserSearch(e.target.value)} />
       <button onClick={handleAddUser} disabled={!userSearch}>Add</button>
-      <div className="flex">
-      {
-        [...messages.keys()].map(username => (
-          <div 
-            className={`${username === selectedUser ? "bg-indigo-300" : "bg-indigo-100"} border-2 border-indigo-700`}
-            key={username} 
-            onClick={() => SetSelectedUser(username)}
-            >{ username }</div>
-        ))
-      }
+      <div className="flex gap-4">
+        <UserList users={consolidatedUsers} selectedUser={selectedUser || ""} />
+
+        {
+          selectedUser && <MessageUser selectedUser={selectedUser} messages={messages.get(selectedUser) || []} currentUser={username} afterSend={afterSendCallback}/>
+        }
       </div>
-      <div>
-      {
-        messages.get(selectedUser)?.map((message, index) => (
-          <div key={index}>
-            <h2>{ message.from }</h2>
-            <p> {message.message} </p>
-          </div>
-        ))
-      }
-      </div>
-      <input className="border-indigo-700 border-2 rounded-md" placeholder="enter message" value={message} onChange={e => setMessage(e.target.value)} />
-      <button onClick={handleSendMessage} disabled={!message || !selectedUser}>Send</button>
     </div>
   )
 }
