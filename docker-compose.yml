@@ -1,6 +1,6 @@
 services:
   mongodb:
-    container_name: mongodb
+    container_name: wazz-app-mongodb
     image: mongo
     ports:
       - '27017:27017'
