@@ -16,7 +16,7 @@ export class MessagesService {
   async findByUser(username: string): Promise<Message[]> {
     return this.messageModel.find({
       $or: [
-        { from: username },
+        { sender: username },
         { recipient: username }
       ],
     }).sort({
@@ -24,9 +24,11 @@ export class MessagesService {
     });
   }
 
-  async updateStatus(id: string, status: Status) {
-    this.messageModel.findByIdAndUpdate(id, {
+  async updateStatus(id: string, status: Status): Promise<Message> {
+    return this.messageModel.findByIdAndUpdate(id, {
       status,
-    })
+    }, {
+      returnDocument: "after",
+    });
   }
 }

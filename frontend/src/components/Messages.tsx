@@ -1,88 +1,119 @@
 import { useEffect, useMemo, useState } from "react"
 import { socket } from "../socket"
 import { useNavigate, useParams } from "react-router";
-import { Message, MessageOfUser } from "../dto";
-import UserList from "./UserList";
-import MessageUser from "./MessageUser";
+import { Message, MessagesByUserResponseDto, MessageStatusUpdateDto, SendMessageDto, SocketResponseDto } from "../dto";
+import UserConversationList from "./user-conversation-list";
+import UserSearch from "./user-search";
+import { useMessageState } from "../hooks/use-message-state";
+import { getOtherUserOfMessage } from "../utils";
+import { MessageStatus } from "../enums";
+import UserConversation from "./user-conversation";
+import MessageInput from "./message-input";
 
 export default function Messages({ username }: { username: string }) {
 
   const { id: selectedUser } = useParams()
-  const navigate = useNavigate()
 
-  const [userSearch, setUserSearch] = useState<string>("");
-  const [messages, setMessages] = useState<Map<string, Message[]>>(new Map()); // i should have just used map lol
+  const {    
+    getUserConversation,
+    addMessage,
+    updateMessage,
+    loadMessageState,
+    userDetails,
+  } = useMessageState();
 
-  const consolidatedUsers = useMemo(() => { // maybe dont need this
-    const users = [...messages.keys()];
-    if (selectedUser && !users.includes(selectedUser)) {
-      users.unshift(selectedUser);
+  async function handleMessageReceived(message: Message) {
+    const otherUser = getOtherUserOfMessage(message, username);
+    const deliveredMessage: Message = { ...message, status: MessageStatus.DELIVERED };
+    const messageStatusUpdateDto: MessageStatusUpdateDto = {
+      messageId: message._id,
+      userToInform: otherUser,
+      newStatus: MessageStatus.DELIVERED,
     }
 
-    return users;
-  }, [messages, selectedUser]);
+    // inform server that message has been received/delivered successfully
+    socket.emit("message-status-update", messageStatusUpdateDto);
+    // TODO, do not need ack from server, just optimistically update client-side status to delivered, 
+    // as it should be impossible for client to view a message that is not delivered technically
+    addMessage(deliveredMessage, otherUser, otherUser);
+  }
 
-  /**
-   * Callback function after successful sending of message through socket.
-   * Updates the list of messages with the message that was sent
-   */
-  function afterSendCallback(res: Message) {
-    setMessages(prev => {
-      const newMap = new Map(prev);
-      if (!newMap.has(res.recipient)) {
-        newMap.set(res.recipient, [res]);
+  async function handleSendMessage(messageString: string, recipient: string) {
+    const message: SendMessageDto = {
+      sender: username,
+      recipient,
+      message: messageString,
+    }
+
+    const tempId = crypto.randomUUID();
+
+    const optimisticMessage: Message = {
+      _id: tempId,
+      sender: username,
+      recipient: recipient,
+      message: messageString,
+      createdAt: new Date().toISOString(),
+      status: MessageStatus.PENDING
+    }
+
+    addMessage(optimisticMessage, recipient, recipient);
+
+    try {
+      const response: SocketResponseDto<Message | string> = await socket.timeout(10000).emitWithAck("message", message);
+      if (response.status === "success") {
+        // update the optimistic message to the real message
+        updateMessage(response.data as Message, username, tempId);
       } else {
-        newMap.set(res.recipient, [...(newMap.get(res.recipient) || []), res])
+        throw new Error("Error from server");
       }
 
-      return newMap;
-    })
+    } catch (err) {
+      updateMessage({ ...optimisticMessage, status: MessageStatus.ERROR }, username, tempId);
+    }
   }
 
-  function handleAddUser() {
-    navigate(`/t/${userSearch}`);
+  async function handleMessageStatusUpdate(updatedMessage: Message) {
+    updateMessage(updatedMessage, username);
   }
-
 
   useEffect(() => {
-    socket.emit("get-all", (res: MessageOfUser[]) => {
+    // fetch all messages for the current user
+    socket.emit("get-all", (res: MessagesByUserResponseDto) => {
       console.log("refreshing all messages")
-      // convert resposnse to map of users and messages
-      const map = new Map<string, Message[]>();
-      res.forEach(message => map.set(message.username, message.messages));
-      setMessages(map);
+      loadMessageState({ byUserId: res.byUserId });
+      // Next we have to send an update to for all messages with status < delivered
+      res.undeliveredMessages.forEach(message => {
+        const updateMessageDto: MessageStatusUpdateDto = {
+          messageId: message._id,
+          newStatus: MessageStatus.DELIVERED,
+          userToInform: getOtherUserOfMessage(message, username),
+        }
+        socket.emit("message-status-update", updateMessageDto);
+
+        updateMessage({ ...message, status: MessageStatus.DELIVERED }, username);
+      });
     });
 
-    function handleReceiveMessage(message: Message) {
-      console.log(message);
-      setMessages(prev => {
-        const newMap = new Map(prev);
-        if (!newMap.has(message.from)) {
-          newMap.set(message.from, [message]);
-        } else {
-          newMap.set(message.from, [...(newMap.get(message.from) || []), message]);
-        }
-
-        return newMap;
-      })
-    }
-
-    socket.on("message", handleReceiveMessage);
+    socket.on("message", handleMessageReceived);
+    socket.on("message-status-update", handleMessageStatusUpdate);
 
     return () => {
-      socket.off("message", handleReceiveMessage);
+      socket.off("message", handleMessageReceived);
+      socket.off("message-status-update", handleMessageStatusUpdate);
     }
-  },[username])
+  },[username]);
 
   return (
     <div>
-      <input className="border-indigo-700 border-2 rounded-md" placeholder="find user" value={userSearch} onChange={e => setUserSearch(e.target.value)} />
-      <button onClick={handleAddUser} disabled={!userSearch}>Add</button>
-      <div className="flex gap-4">
-        <UserList users={consolidatedUsers} selectedUser={selectedUser || ""} />
+      <UserSearch />
+      <div className="flex gap-4 border-black border w-full h-full">
+        <UserConversationList users={userDetails} selectedUser={selectedUser} />
 
         {
-          selectedUser && <MessageUser selectedUser={selectedUser} messages={messages.get(selectedUser) || []} currentUser={username} afterSend={afterSendCallback}/>
+          selectedUser && <UserConversation conversation={getUserConversation(selectedUser)} currentUser={username} />
+        }
+        {
+          selectedUser && <MessageInput onSend={(value) => handleSendMessage(value, selectedUser)} />
         }
       </div>
     </div>

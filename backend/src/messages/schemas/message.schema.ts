@@ -12,11 +12,13 @@ export enum Status {
 @Schema({ timestamps: true })
 export class Message{
 
+  _id: string;
+
   @Prop()
   message: string;
 
   @Prop()
-  from: string;
+  sender: string;
 
   @Prop()
   recipient: string;

@@ -1,7 +1,7 @@
-export default function UserCard({ username, isSelected, onClick }: { username: string, isSelected: boolean, onClick: () => void }) {
+export default function UserCard({ username, active, onClick }: { username: string, active: boolean, onClick: () => void }) {
   return (
     <div 
-      className={`${isSelected ? "bg-indigo-300" : "bg-indigo-100"} border-2 border-indigo-700 p-2 rounded-md`}
+      className={`${active ? "bg-indigo-300" : "bg-indigo-100"} border-2 border-indigo-700 p-2 rounded-md`}
       key={username} 
       onClick={onClick}
     >{ username }</div>
