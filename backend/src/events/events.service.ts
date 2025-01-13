@@ -11,7 +11,7 @@ export class EventsService {
 
   async getAllMessagesForUser(user: string): Promise<MessagesByUserResponseDto> {
     const messages = await this.messageService.findByUser(user);
-    const messagesResponse: MessagesByUserResponseDto = { byUserId: {}, undeliveredMessages: [] };
+    const messagesResponse: MessagesByUserResponseDto = { byUserId: {}, undeliveredMessages: [], unreadMessageIdsByUser: {} };
     messages.forEach(message => {
       const otherUser = getOtherUserOfMessage(message, user);
       if (!messagesResponse.byUserId[otherUser]) {
@@ -26,6 +26,16 @@ export class EventsService {
       if (message.status === Status.SENT) {
         messagesResponse.undeliveredMessages.push(message);
       }
+
+      if (message.status === Status.SENT || message.status === Status.DELIVERED && message.sender === otherUser) {
+        if (!messagesResponse.unreadMessageIdsByUser[otherUser]) {
+          // other user not added to unread messages yet
+          messagesResponse.unreadMessageIdsByUser[otherUser] = [];
+        }
+
+        messagesResponse.unreadMessageIdsByUser[otherUser].push(message._id);
+      }
+
     });
 
     return messagesResponse;

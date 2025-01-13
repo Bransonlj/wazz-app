@@ -12,9 +12,7 @@ export interface MessagesByUserResponseDto {
     [userId: string]: UserConversation;
   };
   undeliveredMessages: Message[];
-  /*
   unreadMessageIdsByUser: {
     [userId: string]: string[];
   };
-  */
 }

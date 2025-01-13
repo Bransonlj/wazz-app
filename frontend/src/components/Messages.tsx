@@ -18,17 +18,15 @@ export default function Messages({ username }: { username: string }) {
     getUserConversation,
     addMessage,
     updateMessage,
+    markMessageRead,
     updateMessageStatus,
     loadMessageState,
     userDetails,
+    unreadMessages,
   } = useMessageState();
 
   function handleMessageRead(messageId: string, senderId: string) {
-    updateMessageStatus({
-      id: messageId,
-      otherUser: senderId,
-      newStatus: MessageStatus.READ,
-    });
+    markMessageRead(messageId, senderId);
 
     const messageStatusUpdateDto: MessageStatusUpdateDto = {
       messageId,
@@ -51,7 +49,12 @@ export default function Messages({ username }: { username: string }) {
     socket.emit("message-status-update", messageStatusUpdateDto);
     // TODO, do not need ack from server, just optimistically update client-side status to delivered, 
     // as it should be impossible for client to view a message that is not delivered technically
-    addMessage(deliveredMessage, otherUser, otherUser);
+    addMessage({
+      message: deliveredMessage, 
+      userId: otherUser, 
+      username: otherUser, 
+      unread: true
+    });
   }
 
   async function handleSendMessage(messageString: string, recipient: string) {
@@ -72,7 +75,11 @@ export default function Messages({ username }: { username: string }) {
       status: MessageStatus.PENDING
     }
 
-    addMessage(optimisticMessage, recipient, recipient);
+    addMessage({
+      message: optimisticMessage, 
+      userId: recipient, 
+      username: recipient
+    });
 
     try {
       const response: SocketResponseDto<Message | string> = await socket.timeout(10000).emitWithAck("message", message);
@@ -96,7 +103,8 @@ export default function Messages({ username }: { username: string }) {
     // fetch all messages for the current user
     socket.emit("get-all", (res: MessagesByUserResponseDto) => {
       console.log("refreshing all messages")
-      loadMessageState({ byUserId: res.byUserId });
+      console.log(res);
+      loadMessageState({ byUserId: res.byUserId, unreadMessageIdsByUser: res.unreadMessageIdsByUser });
       // Next we have to send an update to for all messages with status < delivered
       res.undeliveredMessages.forEach(message => {
         const updateMessageDto: MessageStatusUpdateDto = {
@@ -123,7 +131,7 @@ export default function Messages({ username }: { username: string }) {
     <div>
       <UserSearch />
       <div className="flex gap-4 border-black border w-full h-full">
-        <UserConversationList users={userDetails} selectedUser={selectedUser} />
+        <UserConversationList users={userDetails} unreadMessages={unreadMessages} selectedUser={selectedUser} />
 
         {
           selectedUser && <UserConversation onRead={handleMessageRead} conversation={getUserConversation(selectedUser)} currentUser={username} />
