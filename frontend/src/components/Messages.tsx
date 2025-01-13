@@ -18,9 +18,25 @@ export default function Messages({ username }: { username: string }) {
     getUserConversation,
     addMessage,
     updateMessage,
+    updateMessageStatus,
     loadMessageState,
     userDetails,
   } = useMessageState();
+
+  function handleMessageRead(messageId: string, senderId: string) {
+    updateMessageStatus({
+      id: messageId,
+      otherUser: senderId,
+      newStatus: MessageStatus.READ,
+    });
+
+    const messageStatusUpdateDto: MessageStatusUpdateDto = {
+      messageId,
+      userToInform: senderId,
+      newStatus: MessageStatus.READ,
+    }
+    socket.emit("message-status-update", messageStatusUpdateDto);
+  }
 
   async function handleMessageReceived(message: Message) {
     const otherUser = getOtherUserOfMessage(message, username);
@@ -110,7 +126,7 @@ export default function Messages({ username }: { username: string }) {
         <UserConversationList users={userDetails} selectedUser={selectedUser} />
 
         {
-          selectedUser && <UserConversation conversation={getUserConversation(selectedUser)} currentUser={username} />
+          selectedUser && <UserConversation onRead={handleMessageRead} conversation={getUserConversation(selectedUser)} currentUser={username} />
         }
         {
           selectedUser && <MessageInput onSend={(value) => handleSendMessage(value, selectedUser)} />

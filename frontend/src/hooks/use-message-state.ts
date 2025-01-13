@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Message, UserDetailDto } from "../dto";
 import { getOtherUserOfMessage } from "../utils";
+import { MessageStatus } from "../enums";
 
 export interface UserConversation {
   username: string;
@@ -38,14 +39,56 @@ export function useMessageState() {
     }))
   }
 
+/**
+ * Updates the status of a specific message in the state.
+ * Does not update if specified user or message does not exist in the MessageState
+ *
+ * @param {Object} params - The parameters for updating the message status.
+ * @param {string} params.id - The ID of the message to update.
+ * @param {string} params.otherUser - The ID of the other user in the conversation.
+ * @param {MessageStatus} params.newStatus - The new status to set for the message.
+ */
+  function updateMessageStatus(
+    { id, otherUser, newStatus }: { id: string, otherUser: string, newStatus: MessageStatus }
+  ) {
+    setMessageState(prev => {
+      if (!prev.byUserId[otherUser]) {
+        console.error(`Error updating message for user ${otherUser} that does not have conversation with`);
+        return prev;
+      }
+
+      if (!prev.byUserId[otherUser].byMessageId[id]) {
+        console.error(`Error updating message for message ${id} that does not exist`);
+        return prev;
+      }
+
+      return {
+        ...prev,
+        byUserId: {
+          ...prev.byUserId,
+          [otherUser]: {
+            ...prev.byUserId[otherUser],
+            byMessageId: {
+              ...prev.byUserId[otherUser].byMessageId,
+              [id]: {
+                ...prev.byUserId[otherUser].byMessageId[id],
+                status: newStatus,
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   function updateMessage(message: Message, currentUser: string, tempId?: string) {
     const otherUser = getOtherUserOfMessage(message, currentUser);
     setMessageState(prev => {
       if (!prev.byUserId[otherUser]) {
-        console.log(prev);
         console.error(`Error updating message for user ${otherUser} that does not have conversation with`);
         return prev;
       }
+
       let messagesToKeep = prev.byUserId[otherUser].byMessageId;
       if (tempId) {
         // delete message with tempId
@@ -84,6 +127,7 @@ export function useMessageState() {
     getUserConversation,
     addMessage,
     updateMessage,
+    updateMessageStatus,
     loadMessageState,
     userDetails,
   }
