@@ -9,18 +9,20 @@ import { getOtherUserOfMessage } from 'src/utils';
 export class EventsService {
   constructor(private messageService: MessagesService) {}
 
-  async getAllMessagesForUser(user: string): Promise<MessagesByUserResponseDto> {
-    const messages = await this.messageService.findByUser(user);
+  async getAllMessagesForUserId(userId: string): Promise<MessagesByUserResponseDto> {
+    const messages = await this.messageService.findByUserId(userId);
     const messagesResponse: MessagesByUserResponseDto = { byUserId: {}, undeliveredMessages: [], unreadMessageIdsByUser: {} };
+
     messages.forEach(message => {
-      const otherUser = getOtherUserOfMessage(message, user);
-      if (!messagesResponse.byUserId[otherUser]) {
+      const otherUser = getOtherUserOfMessage(message, userId); // this is wrong?
+      const otherUserIdString = otherUser._id.toString();
+      if (!messagesResponse.byUserId[otherUserIdString]) {
         // user not added into Dto yet, add user details
-        messagesResponse.byUserId[otherUser] = { username: otherUser, byMessageId: {} };
+        messagesResponse.byUserId[otherUserIdString] = { username: otherUser.username, byMessageId: {} }; // might need to populate in order to have username param
       } 
 
-      messagesResponse.byUserId[otherUser].byMessageId = {
-        ...messagesResponse.byUserId[otherUser].byMessageId,
+      messagesResponse.byUserId[otherUserIdString].byMessageId = {
+        ...messagesResponse.byUserId[otherUserIdString].byMessageId,
         [message._id]: message,
       }
       if (message.status === Status.SENT) {
@@ -28,12 +30,12 @@ export class EventsService {
       }
 
       if (message.status === Status.SENT || message.status === Status.DELIVERED && message.sender === otherUser) {
-        if (!messagesResponse.unreadMessageIdsByUser[otherUser]) {
+        if (!messagesResponse.unreadMessageIdsByUser[otherUserIdString]) {
           // other user not added to unread messages yet
-          messagesResponse.unreadMessageIdsByUser[otherUser] = [];
+          messagesResponse.unreadMessageIdsByUser[otherUserIdString] = [];
         }
 
-        messagesResponse.unreadMessageIdsByUser[otherUser].push(message._id);
+        messagesResponse.unreadMessageIdsByUser[otherUserIdString].push(message._id);
       }
 
     });
@@ -43,12 +45,14 @@ export class EventsService {
 
   async createAndSendMessage(messageRequest: MessageRequestDto, server: Server): Promise<Message> {
     const message = await this.messageService.create({
-      sender: messageRequest.sender,
-      recipient: messageRequest.recipient,
+      sender: messageRequest.senderId,
+      recipient: messageRequest.recipientId,
       message: messageRequest.message,
     });
 
-    server.to(messageRequest.recipient).emit("message", message);
+    console.log("here", message);
+
+    server.to(messageRequest.recipientId).emit("message", message);
 
     return message;
   }
@@ -59,7 +63,7 @@ export class EventsService {
       messageStatusUpdateDto.newStatus
     ); 
 
-    server.to(messageStatusUpdateDto.userToInform).emit("message-status-update", updatedMessage);
+    server.to(messageStatusUpdateDto.userIdToInform).emit("message-status-update", updatedMessage);
     return updatedMessage;
   }
 

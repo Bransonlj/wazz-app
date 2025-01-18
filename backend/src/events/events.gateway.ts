@@ -1,4 +1,4 @@
-import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from "@nestjs/websockets";
+import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { MessagesService } from "src/messages/messages.service";
 import { Message, Status } from "src/messages/schemas";
@@ -6,7 +6,7 @@ import { EventResponseDto, MessageRequestDto, MessagesByUserResponseDto, Message
 import { EventsService } from "./events.service";
 
 interface AuthSocket extends Socket {
-  user: string;
+  userId: string;
 }
 
 @WebSocketGateway({
@@ -14,37 +14,44 @@ interface AuthSocket extends Socket {
     origin: "*",
   },
 })
-export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
+export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
 
-  constructor(private messageService: MessagesService, private eventService: EventsService) {}
+  constructor(private eventService: EventsService) {}
 
   @WebSocketServer()
   server: Server;
 
   afterInit(server: Server) {
     server.use((socket: AuthSocket, next) => {
-      const username = socket.handshake.auth.username;
-      if (!username) {
-        return next(new Error("invalid username"));
+      const userId = socket.handshake.auth.userId || socket.handshake.headers.userid;
+      if (!userId) {
+        // i can check userService and also retrieve username if needed
+        return next(new Error("invalid userId"));
       }
-      socket.user = username;
+      socket.userId = userId;
       next();
     })
   }
 
   handleConnection(client: AuthSocket, ...args: any[]) {
-    const user = client.user
+    const userId = client.userId
+    console.log("user connected", userId);
     // authenticate
-    client.join(user);
+    client.join(userId);
+  }
+
+  handleDisconnect(client: AuthSocket) {
+      console.log("user disconnected", client.userId)
   }
 
   @SubscribeMessage('get-all')
   async getAllMessages(@ConnectedSocket() client: AuthSocket): Promise<MessagesByUserResponseDto> {
-    return this.eventService.getAllMessagesForUser(client.user);
+    return this.eventService.getAllMessagesForUserId(client.userId);
   }
 
   @SubscribeMessage('message')
   async handleEvent(@MessageBody() data: MessageRequestDto, @ConnectedSocket() client: AuthSocket): Promise<EventResponseDto<string | Message>> {
+    // verify clientId match
     try {
       console.log(data);
       const message = await this.eventService.createAndSendMessage(data, this.server);

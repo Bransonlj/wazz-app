@@ -9,123 +9,27 @@ import { getOtherUserOfMessage } from "../utils";
 import { MessageStatus } from "../enums";
 import UserConversation from "./user-conversation";
 import MessageInput from "./message-input";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocketMessage } from "@/hooks/use-socket-message";
 
-export default function Messages({ username }: { username: string }) {
+export default function Messages({ userId }: { userId: string }) {
 
   const { id: selectedUser } = useParams()
+  //const { currentUserId } = useAuth();
 
-  const {    
-    getUserConversation,
-    addMessage,
-    updateMessage,
-    markMessageRead,
-    updateMessageStatus,
-    loadMessageState,
+  const {
     userDetails,
     unreadMessages,
-  } = useMessageState();
-
-  function handleMessageRead(messageId: string, senderId: string) {
-    markMessageRead(messageId, senderId);
-
-    const messageStatusUpdateDto: MessageStatusUpdateDto = {
-      messageId,
-      userToInform: senderId,
-      newStatus: MessageStatus.READ,
-    }
-    socket.emit("message-status-update", messageStatusUpdateDto);
-  }
-
-  async function handleMessageReceived(message: Message) {
-    const otherUser = getOtherUserOfMessage(message, username);
-    const deliveredMessage: Message = { ...message, status: MessageStatus.DELIVERED };
-    const messageStatusUpdateDto: MessageStatusUpdateDto = {
-      messageId: message._id,
-      userToInform: otherUser,
-      newStatus: MessageStatus.DELIVERED,
-    }
-
-    // inform server that message has been received/delivered successfully
-    socket.emit("message-status-update", messageStatusUpdateDto);
-    // TODO, do not need ack from server, just optimistically update client-side status to delivered, 
-    // as it should be impossible for client to view a message that is not delivered technically
-    addMessage({
-      message: deliveredMessage, 
-      userId: otherUser, 
-      username: otherUser, 
-      unread: true
-    });
-  }
-
-  async function handleSendMessage(messageString: string, recipient: string) {
-    const message: SendMessageDto = {
-      sender: username,
-      recipient,
-      message: messageString,
-    }
-
-    const tempId = crypto.randomUUID();
-
-    const optimisticMessage: Message = {
-      _id: tempId,
-      sender: username,
-      recipient: recipient,
-      message: messageString,
-      createdAt: new Date().toISOString(),
-      status: MessageStatus.PENDING
-    }
-
-    addMessage({
-      message: optimisticMessage, 
-      userId: recipient, 
-      username: recipient
-    });
-
-    try {
-      const response: SocketResponseDto<Message | string> = await socket.timeout(10000).emitWithAck("message", message);
-      if (response.status === "success") {
-        // update the optimistic message to the real message
-        updateMessage(response.data as Message, username, tempId);
-      } else {
-        throw new Error("Error from server");
-      }
-
-    } catch (err) {
-      updateMessage({ ...optimisticMessage, status: MessageStatus.ERROR }, username, tempId);
-    }
-  }
-
-  async function handleMessageStatusUpdate(updatedMessage: Message) {
-    updateMessage(updatedMessage, username);
-  }
+    handleMessageRead,
+    getConversationWithUserId,
+    sendMessage,
+    loadMessages,
+  } = useSocketMessage(userId);
 
   useEffect(() => {
-    // fetch all messages for the current user
-    socket.emit("get-all", (res: MessagesByUserResponseDto) => {
-      console.log("refreshing all messages")
-      console.log(res);
-      loadMessageState({ byUserId: res.byUserId, unreadMessageIdsByUser: res.unreadMessageIdsByUser });
-      // Next we have to send an update to for all messages with status < delivered
-      res.undeliveredMessages.forEach(message => {
-        const updateMessageDto: MessageStatusUpdateDto = {
-          messageId: message._id,
-          newStatus: MessageStatus.DELIVERED,
-          userToInform: getOtherUserOfMessage(message, username),
-        }
-        socket.emit("message-status-update", updateMessageDto);
-
-        updateMessage({ ...message, status: MessageStatus.DELIVERED }, username);
-      });
-    });
-
-    socket.on("message", handleMessageReceived);
-    socket.on("message-status-update", handleMessageStatusUpdate);
-
-    return () => {
-      socket.off("message", handleMessageReceived);
-      socket.off("message-status-update", handleMessageStatusUpdate);
-    }
-  },[username]);
+    console.log("rendering")
+    loadMessages();
+  }, [userId]);
 
   return (
     <div>
@@ -134,10 +38,10 @@ export default function Messages({ username }: { username: string }) {
         <UserConversationList users={userDetails} unreadMessages={unreadMessages} selectedUser={selectedUser} />
 
         {
-          selectedUser && <UserConversation onRead={handleMessageRead} conversation={getUserConversation(selectedUser)} currentUser={username} />
+          selectedUser && <UserConversation onRead={handleMessageRead} conversation={getConversationWithUserId(selectedUser)} currentUser={userId} />
         }
         {
-          selectedUser && <MessageInput onSend={(value) => handleSendMessage(value, selectedUser)} />
+          selectedUser && <MessageInput onSend={(value) => sendMessage(value, selectedUser)} />
         }
       </div>
     </div>

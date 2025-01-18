@@ -60,10 +60,10 @@ export default function UserConversation({ conversation, currentUser, onRead }: 
         <MessageBubble 
           key={messageId} 
           message={conversation.byMessageId[messageId]} 
-          isSender={conversation.byMessageId[messageId].sender === currentUser}
+          isSender={conversation.byMessageId[messageId].sender._id === currentUser}
           data-status={conversation.byMessageId[messageId].status}
           data-id={messageId}
-          data-sender={conversation.byMessageId[messageId].sender}
+          data-sender={conversation.byMessageId[messageId].sender._id}
            />
       ))
     }

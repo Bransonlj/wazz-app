@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Message, Status } from './schemas';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateMessageDto } from './dto';
 
 @Injectable()
@@ -9,19 +9,30 @@ export class MessagesService {
   constructor(@InjectModel(Message.name) private messageModel: Model<Message>) {}
 
   async create(createMessageDto: CreateMessageDto): Promise<Message> {
-    const createdMessage = new this.messageModel(createMessageDto);
-    return createdMessage.save()
+    try {
+      console.log("creatin", createMessageDto)
+      const createdMessage = await this.messageModel.create({
+        message: createMessageDto.message,
+        recipient: createMessageDto.recipient,
+        sender: createMessageDto.sender,
+      });
+      console.log("saved", createdMessage)
+      return createdMessage
+    } catch (err) {
+      console.log(err)
+    }
   }
-
-  async findByUser(username: string): Promise<Message[]> {
+    
+  async findByUserId(userId: string): Promise<Message[]> {
+    const userObjectId = new Types.ObjectId(userId)
     return this.messageModel.find({
       $or: [
-        { sender: username },
-        { recipient: username }
+        { sender: userObjectId },
+        { recipient: userObjectId }
       ],
     }).sort({
       createdAt: 1 // asc
-    });
+    }).populate("sender").populate("recipient");
   }
 
   async updateStatus(id: string, status: Status): Promise<Message> {

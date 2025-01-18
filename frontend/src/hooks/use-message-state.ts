@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Message, UserDetailDto } from "../dto";
+import { Message, UserDetailDto, UserDto } from "../dto";
 import { getOtherUserOfMessage } from "../utils";
 import { MessageStatus } from "../enums";
 
@@ -163,13 +163,13 @@ export function useMessageState() {
     });
   }
 
-  function getUserConversation(userId: string): UserConversation | null {
+  function getConversationWithUserId(userId: string): UserConversation | null {
     return messageState.byUserId[userId] || null;
   }
 
-  const userDetails: UserDetailDto[] = useMemo(() => {
+  const userDetails: UserDto[] = useMemo(() => {
     return Object.keys(messageState.byUserId).map(userId => ({
-      id: userId,
+      _id: userId,
       username: messageState.byUserId[userId].username,
     }))
   }, [messageState]);
@@ -179,7 +179,7 @@ export function useMessageState() {
   }, [messageState])
 
   return {
-    getUserConversation,
+    getConversationWithUserId,
     addMessage,
     markMessageRead,
     updateMessage,

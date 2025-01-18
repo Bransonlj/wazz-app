@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
+import { User } from "src/users/schemas/user.schema";
+import * as mongoose from 'mongoose';
 
 export type SchemaDocument = HydratedDocument<Message>;
 
@@ -17,11 +19,12 @@ export class Message{
   @Prop()
   message: string;
 
-  @Prop()
-  sender: string;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
+  sender: User;
 
-  @Prop()
-  recipient: string;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
+  recipient: User;
 
   @Prop({
     type: String,
