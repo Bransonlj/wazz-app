@@ -1,9 +1,9 @@
+import { UserDto } from "@/dto";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { UserDetailDto } from "../dto";
 
 interface UserSearchProps {
-  onSearch?: (user: UserDetailDto) => void;
+  onSearch?: (user: UserDto) => void;
 }
 
 export default function UserSearch({ onSearch }: UserSearchProps) {

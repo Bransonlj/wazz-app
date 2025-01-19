@@ -1,6 +1,6 @@
 import { Message } from "./message.dto";
 
-export interface UserConversation {
+export interface UserConversationDto {
   username: string;
   byMessageId: {
     [messageId: string]: Message
@@ -9,7 +9,7 @@ export interface UserConversation {
 
 export interface MessagesByUserResponseDto {
   byUserId: {
-    [userId: string]: UserConversation;
+    [userId: string]: UserConversationDto;
   };
   undeliveredMessages: Message[];
   unreadMessageIdsByUser: {

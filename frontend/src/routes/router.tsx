@@ -1,6 +1,5 @@
 import { Route, Routes } from "react-router";
 import MessagingLayout from "../layouts/MessagingLayout";
-import App from "../App";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import MainLayout from "@/layouts/main-layoute";

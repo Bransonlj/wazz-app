@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Message, UserDetailDto, UserDto } from "../dto";
+import { Message, UserDto } from "../dto";
 import { getOtherUserOfMessage } from "../utils";
 import { MessageStatus } from "../enums";
 
-export interface UserConversation {
+interface UserConversation {
   username: string;
   byMessageId: {
     [messageId: string]: Message;
@@ -14,7 +14,8 @@ interface UnreadMessageIdsByUser {
   [userId: string]: string[];
 }
 
-export interface MessageState {
+// FOR INTERNAL USE ONLY, TODO REFACTOR TO USE DTO
+interface MessageState {
   byUserId: {
     [userId: string]: UserConversation;
   };
@@ -33,14 +34,14 @@ export function useMessageState() {
   }
 
   function addMessage(
-    { message, userId, username, unread=false }: { message: Message, userId: string, username: string, unread?: boolean }
+    { message, otherUser, unread=false }: { message: Message, otherUser: UserDto, unread?: boolean }
   ) {
     setMessageState(prev => {
       const unreadMessages: UnreadMessageIdsByUser = unread 
         ? { // add message to unread messages if unread flag is true
           ...prev.unreadMessageIdsByUser,
-          [userId]: prev.unreadMessageIdsByUser[userId] // check if user is already key in unread messages
-            ? [...prev.unreadMessageIdsByUser[userId], message._id]
+          [otherUser._id]: prev.unreadMessageIdsByUser[otherUser._id] // check if user is already key in unread messages
+            ? [...prev.unreadMessageIdsByUser[otherUser._id], message._id]
             : [message._id] 
         } : { ...prev.unreadMessageIdsByUser };
 
@@ -48,10 +49,10 @@ export function useMessageState() {
         ...prev,
         byUserId: {
           ...prev.byUserId,
-          [userId]: {
-            username,
+          [otherUser._id]: {
+            username: otherUser.username,
             byMessageId: {
-              ...(prev.byUserId[userId]?.byMessageId || {}),
+              ...(prev.byUserId[otherUser._id]?.byMessageId || {}),
               [message._id]: message
             }
           }
@@ -64,13 +65,13 @@ export function useMessageState() {
   function markMessageRead(id: string, sender: string) {
     setMessageState(prev => {
       if (!prev.unreadMessageIdsByUser[sender] || prev.unreadMessageIdsByUser[sender].length === 0) {
-        console.warn(`Error marking message as read for user ${sender} that does not have unread messages`);
+        console.warn(`Error marking message as read for user ${sender} that does not have unread messages. This error is expected to occur once during StrictMode`);
         return prev;
       }
 
       const messageIndex = prev.unreadMessageIdsByUser[sender].findIndex(_id => _id === id);
       if (messageIndex === -1) {
-        console.warn(`Error marking message as read for message ${id} that is not unread`);
+        console.warn(`Error marking message as read for message ${id} that is not unread. This error is expected to occur once during StrictMode`);
         return prev;
       }
 
@@ -104,12 +105,12 @@ export function useMessageState() {
   ) {
     setMessageState(prev => {
       if (!prev.byUserId[otherUser]) {
-        console.warn(`Error updating message for user ${otherUser} that does not have conversation with`);
+        console.warn(`Error updating message for user ${otherUser} that does not have conversation with. This error is expected to occur once during StrictMode`);
         return prev;
       }
 
       if (!prev.byUserId[otherUser].byMessageId[id]) {
-        console.warn(`Error updating message for message ${id} that does not exist`);
+        console.warn(`Error updating message for message ${id} that does not exist. This error is expected to occur once during StrictMode`);
         return prev;
       }
 
@@ -133,17 +134,17 @@ export function useMessageState() {
   }
 
   function updateMessage(message: Message, currentUser: string, tempId?: string) {
-    const otherUser = getOtherUserOfMessage(message, currentUser);
+    const otherUserId = getOtherUserOfMessage(message, currentUser)._id;
     setMessageState(prev => {
-      if (!prev.byUserId[otherUser]) {
-        console.warn(`Error updating message for user ${otherUser} that does not have conversation with`);
+      if (!prev.byUserId[otherUserId]) {
+        console.warn(`Error updating message for user ${otherUserId} that does not have conversation with. This error is expected to occur once during StrictMode`);
         return prev;
       }
 
-      let messagesToKeep = prev.byUserId[otherUser].byMessageId;
+      let messagesToKeep = prev.byUserId[otherUserId].byMessageId;
       if (tempId) {
         // delete message with tempId
-        const { [tempId]: _, ...otherMessages} = prev.byUserId[otherUser].byMessageId
+        const { [tempId]: _, ...otherMessages} = prev.byUserId[otherUserId].byMessageId
         messagesToKeep = otherMessages;
       }
 
@@ -151,8 +152,8 @@ export function useMessageState() {
         ...prev,
         byUserId: {
           ...prev.byUserId,
-          [otherUser]: {
-            ...prev.byUserId[otherUser],
+          [otherUserId]: {
+            ...prev.byUserId[otherUserId],
             byMessageId: {
               ...messagesToKeep,
               [message._id]: message,

@@ -1,72 +1,53 @@
-import { useEffect, useRef } from "react";
-import { UserConversation as UserConversationDto } from "../hooks/use-message-state";
-import MessageBubble from "./MessageBubble";
-import { MessageStatus } from "../enums";
+import { useQuery } from "@tanstack/react-query";
+import MessageInput from "./message-input";
+import MessageList from "./message-list";
+import UserService from "@/services/user.service";
+import { UserConversationDto, UserDto } from "@/dto";
+import ErrorFeedback from "./error-feedback";
 
 interface UserConversationProps {
-  conversation: UserConversationDto | null;
+  selectedUser: string;
   currentUser: string;
+  conversation: UserConversationDto | null
+  onSendMessage?: (message: string, user: UserDto) => void;
   onRead?: (messageId: string, userId: string) => void;
 }
 
-export default function UserConversation({ conversation, currentUser, onRead }: UserConversationProps) {
+export default function UserConversation({ selectedUser, currentUser, conversation, onSendMessage, onRead }: UserConversationProps) {
 
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const { 
+    data,
+    isSuccess,
+    isError,
+    isPending,
+    error,
+  } = useQuery({
+    queryKey: ["user", selectedUser],
+    queryFn: () => UserService.findById(selectedUser)
+  })  
 
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+  function handleSendMessage(value: string) {
+    if (isSuccess) {
+      onSendMessage?.(value, {
+        _id: selectedUser,
+        username: data.username,
+      })
+    }
+  }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const element = entry.target as HTMLElement; // convert to HTMLElement to access dataset property
-            const { sender, id, status} = element.dataset;
-            if (!sender || !id || !status) return;
-            if (status === MessageStatus.DELIVERED && sender !== currentUser) {
-              // trigger onRead if message is not read yet
- 
-              onRead?.(id, sender);
-            }
-            
-          }
-        })
-      },
-      {
-        root: container,
-        threshold: 0.5,
-      }
-    );
+  if (isPending) {
+    return <div>Loading...</div>
+  }
 
-    const elements = Array.from(container.children);
-    elements.forEach((el) => observer.observe(el));
-
-    return () => {
-        elements.forEach((el) => observer.unobserve(el));
-    };
-  }, [conversation]) // conversation state will affect the elements within the scroll container
-  
-  if (!conversation || Object.keys(conversation.byMessageId).length === 0) {
-    return <div>
-      Say something!
-    </div>
+  if (isError) {
+    return <ErrorFeedback message={error.message} />
   }
 
   return (
-    <div ref={scrollContainerRef} className="flex flex-col gap-1 overflow-y-scroll max-h-96">
-    {
-      Object.keys(conversation.byMessageId).map(messageId => (
-        <MessageBubble 
-          key={messageId} 
-          message={conversation.byMessageId[messageId]} 
-          isSender={conversation.byMessageId[messageId].sender._id === currentUser}
-          data-status={conversation.byMessageId[messageId].status}
-          data-id={messageId}
-          data-sender={conversation.byMessageId[messageId].sender._id}
-           />
-      ))
-    }
+    <div className="flex gap-4 border-black border w-full h-full">
+      <h2>{ data?.username || "unkown user" }</h2>
+      <MessageList onRead={onRead} conversation={conversation} currentUser={currentUser} />
+      <MessageInput onSend={handleSendMessage} />
     </div>
   )
 }

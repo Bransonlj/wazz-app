@@ -1,11 +1,11 @@
-import { Message, MessagesByUserResponseDto, MessageStatusUpdateDto, SendMessageDto, SocketResponseDto } from "@/dto";
+import { Message, MessagesByUserResponseDto, MessageStatusUpdateDto, SendMessageDto, SocketResponseDto, UserDto } from "@/dto";
 import { socket } from "@/socket";
 import { useEffect } from "react";
 import { useMessageState } from "./use-message-state";
 import { MessageStatus } from "@/enums";
 import { getOtherUserOfMessage } from "@/utils";
 
-export function useSocketMessage(userId: string) {
+export function useSocketMessage(user: UserDto) {
   const {    
     getConversationWithUserId,
     addMessage,
@@ -27,10 +27,10 @@ export function useSocketMessage(userId: string) {
     socket.emit("message-status-update", messageStatusUpdateDto);
   }
 
-  async function sendMessage(messageString: string, recipient: string) {
+  async function sendMessage(messageString: string, recipient: UserDto) {
     const message: SendMessageDto = {
-      senderId: userId,
-      recipientId: recipient,
+      senderId: user._id,
+      recipientId: recipient._id,
       message: messageString,
     }
 
@@ -38,8 +38,8 @@ export function useSocketMessage(userId: string) {
 
     const optimisticMessage: Message = {
       _id: tempId,
-      sender: { _id: userId } ,
-      recipient: { _id: recipient },
+      sender: user,
+      recipient: recipient,
       message: messageString,
       createdAt: new Date().toISOString(),
       status: MessageStatus.PENDING
@@ -47,21 +47,20 @@ export function useSocketMessage(userId: string) {
 
     addMessage({
       message: optimisticMessage, 
-      userId: recipient, 
-      username: recipient
+      otherUser: recipient
     });
 
     try {
       const response: SocketResponseDto<Message | string> = await socket.timeout(10000).emitWithAck("message", message);
       if (response.status === "success") {
         // update the optimistic message to the real message
-        updateMessage(response.data as Message, userId, tempId);
+        updateMessage(response.data as Message, user._id, tempId);
       } else {
         throw new Error("Error from server");
       }
 
     } catch (err) {
-      updateMessage({ ...optimisticMessage, status: MessageStatus.ERROR }, userId, tempId);
+      updateMessage({ ...optimisticMessage, status: MessageStatus.ERROR }, user._id, tempId);
     }
   }
 
@@ -76,11 +75,11 @@ export function useSocketMessage(userId: string) {
         const updateMessageDto: MessageStatusUpdateDto = {
           messageId: message._id,
           newStatus: MessageStatus.DELIVERED,
-          userIdToInform: getOtherUserOfMessage(message, userId),
+          userIdToInform: getOtherUserOfMessage(message, user._id)._id,
         }
         socket.emit("message-status-update", updateMessageDto);
 
-        updateMessage({ ...message, status: MessageStatus.DELIVERED }, userId);
+        updateMessage({ ...message, status: MessageStatus.DELIVERED }, user._id);
       });
     });
   }
@@ -93,11 +92,11 @@ export function useSocketMessage(userId: string) {
      */
 
     async function handleMessageReceived(message: Message) {
-      const otherUser = getOtherUserOfMessage(message, userId);
+      const otherUser = getOtherUserOfMessage(message, user._id);
       const deliveredMessage: Message = { ...message, status: MessageStatus.DELIVERED };
       const messageStatusUpdateDto: MessageStatusUpdateDto = {
         messageId: message._id,
-        userIdToInform: otherUser,
+        userIdToInform: otherUser._id,
         newStatus: MessageStatus.DELIVERED,
       }
   
@@ -107,14 +106,13 @@ export function useSocketMessage(userId: string) {
       // as it should be impossible for client to view a message that is not delivered technically
       addMessage({
         message: deliveredMessage, 
-        userId: otherUser, 
-        username: otherUser, 
+        otherUser,
         unread: true
       });
     }
 
     async function handleMessageStatusUpdate(updatedMessage: Message) {
-      updateMessage(updatedMessage, userId);
+      updateMessage(updatedMessage, user._id);
     }
 
     // Subscribe to socket events
@@ -125,7 +123,7 @@ export function useSocketMessage(userId: string) {
       socket.off("message", handleMessageReceived);
       socket.off("message-status-update", handleMessageStatusUpdate);
     }
-  },[userId]);
+  },[user]);
 
   return {
     loadMessages,

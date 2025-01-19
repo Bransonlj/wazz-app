@@ -10,13 +10,11 @@ export class MessagesService {
 
   async create(createMessageDto: CreateMessageDto): Promise<Message> {
     try {
-      console.log("creatin", createMessageDto)
       const createdMessage = await this.messageModel.create({
         message: createMessageDto.message,
         recipient: createMessageDto.recipient,
         sender: createMessageDto.sender,
-      });
-      console.log("saved", createdMessage)
+      }).then(message => message.populate(["recipient", "sender"]));
       return createdMessage
     } catch (err) {
       console.log(err)
@@ -40,6 +38,6 @@ export class MessagesService {
       status,
     }, {
       returnDocument: "after",
-    });
+    }).populate(["recipient", "sender"]);
   }
 }

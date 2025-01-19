@@ -50,8 +50,6 @@ export class EventsService {
       message: messageRequest.message,
     });
 
-    console.log("here", message);
-
     server.to(messageRequest.recipientId).emit("message", message);
 
     return message;

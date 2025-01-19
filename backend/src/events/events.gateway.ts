@@ -53,7 +53,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   async handleEvent(@MessageBody() data: MessageRequestDto, @ConnectedSocket() client: AuthSocket): Promise<EventResponseDto<string | Message>> {
     // verify clientId match
     try {
-      console.log(data);
       const message = await this.eventService.createAndSendMessage(data, this.server);
       return {
         status: "success",

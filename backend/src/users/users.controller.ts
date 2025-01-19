@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
 import { UserQueryDto } from './dto';
 import { UsersService } from './users.service';
 
@@ -9,5 +9,15 @@ export class UsersController {
   @Get("")
   findByUsername(@Query() query: UserQueryDto) {
     return this.userService.findByUsername(query.username);
+  }
+
+  @Get(":id")
+  async findById(@Param('id') id: string) {
+    const user = await this.userService.findById(id);
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} does not exist`);
+    }
+
+    return user;
   }
 }

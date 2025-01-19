@@ -1,21 +1,14 @@
-import { useEffect, useMemo, useState } from "react"
-import { socket } from "../socket"
-import { useNavigate, useParams } from "react-router";
-import { Message, MessagesByUserResponseDto, MessageStatusUpdateDto, SendMessageDto, SocketResponseDto } from "../dto";
+import { useEffect } from "react"
+import { useParams } from "react-router";
+import { UserDto } from "../dto";
 import UserConversationList from "./user-conversation-list";
 import UserSearch from "./user-search";
-import { useMessageState } from "../hooks/use-message-state";
-import { getOtherUserOfMessage } from "../utils";
-import { MessageStatus } from "../enums";
-import UserConversation from "./user-conversation";
-import MessageInput from "./message-input";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSocketMessage } from "@/hooks/use-socket-message";
+import UserConversation from "./user-conversation";
 
-export default function Messages({ userId }: { userId: string }) {
+export default function Messages({ user }: { user: UserDto }) {
 
   const { id: selectedUser } = useParams()
-  //const { currentUserId } = useAuth();
 
   const {
     userDetails,
@@ -24,26 +17,26 @@ export default function Messages({ userId }: { userId: string }) {
     getConversationWithUserId,
     sendMessage,
     loadMessages,
-  } = useSocketMessage(userId);
+  } = useSocketMessage(user);
 
   useEffect(() => {
-    console.log("rendering")
+    // to reload message state when page is reloaded.
     loadMessages();
-  }, [userId]);
+  }, [user]);
 
   return (
     <div>
       <UserSearch />
-      <div className="flex gap-4 border-black border w-full h-full">
-        <UserConversationList users={userDetails} unreadMessages={unreadMessages} selectedUser={selectedUser} />
-
-        {
-          selectedUser && <UserConversation onRead={handleMessageRead} conversation={getConversationWithUserId(selectedUser)} currentUser={userId} />
-        }
-        {
-          selectedUser && <MessageInput onSend={(value) => sendMessage(value, selectedUser)} />
-        }
-      </div>
+      <UserConversationList users={userDetails} unreadMessages={unreadMessages} selectedUser={selectedUser} />
+      {
+        selectedUser && <UserConversation 
+          conversation={getConversationWithUserId(selectedUser)} 
+          selectedUser={selectedUser}
+          currentUser={user._id}
+          onRead={handleMessageRead}
+          onSendMessage={sendMessage}
+        />
+      }
     </div>
   )
 }
