@@ -1,6 +1,5 @@
-import { Message } from "src/messages/schemas";
-import { User } from "src/users/schemas/user.schema";
+import { Message, SafeUser } from "src/messages/schemas";
 
-export function getOtherUserOfMessage(message: Message, userId: string): User {
+export function getOtherUserOfMessage(message: Message, userId: string): SafeUser {
   return message.recipient._id.toString() === userId ? message.sender : message.recipient;
 }

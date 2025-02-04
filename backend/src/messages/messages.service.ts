@@ -30,7 +30,10 @@ export class MessagesService {
       ],
     }).sort({
       createdAt: 1 // asc
-    }).populate("sender").populate("recipient");
+    }).populate([
+      { path: 'recipient', select: "-passwordHash" }, 
+      { path: 'sender', select: "-passwordHash" }
+    ]);
   }
 
   async updateStatus(id: string, status: Status): Promise<Message> {
@@ -38,6 +41,6 @@ export class MessagesService {
       status,
     }, {
       returnDocument: "after",
-    }).populate(["recipient", "sender"]);
+    }).then(message => message.populate(["recipient", "sender"]));
   }
 }

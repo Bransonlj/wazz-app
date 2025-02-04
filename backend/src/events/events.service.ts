@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MessagesService } from 'src/messages/messages.service';
 import { MessageRequestDto, MessagesByUserResponseDto, MessageStatusUpdateDto } from './dto';
-import { Server } from 'socket.io';
 import { Message, Status } from 'src/messages/schemas';
 import { getOtherUserOfMessage } from 'src/utils';
 
@@ -29,7 +28,7 @@ export class EventsService {
         messagesResponse.undeliveredMessages.push(message);
       }
 
-      if (message.status === Status.SENT || message.status === Status.DELIVERED && message.sender === otherUser) {
+      if (message.sender === otherUser && (message.status === Status.SENT || message.status === Status.DELIVERED)) {
         if (!messagesResponse.unreadMessageIdsByUser[otherUserIdString]) {
           // other user not added to unread messages yet
           messagesResponse.unreadMessageIdsByUser[otherUserIdString] = [];
@@ -43,26 +42,20 @@ export class EventsService {
     return messagesResponse;
   }
 
-  async createAndSendMessage(messageRequest: MessageRequestDto, server: Server): Promise<Message> {
-    const message = await this.messageService.create({
+  // update to return the message
+  async createAndSendMessage(messageRequest: MessageRequestDto): Promise<Message> {
+    return this.messageService.create({
       sender: messageRequest.senderId,
       recipient: messageRequest.recipientId,
       message: messageRequest.message,
     });
-
-    server.to(messageRequest.recipientId).emit("message", message);
-
-    return message;
   }
 
-  async updateMessageStatus(messageStatusUpdateDto: MessageStatusUpdateDto, server: Server) {
-    const updatedMessage = await this.messageService.updateStatus(
+  async updateMessageStatus(messageStatusUpdateDto: MessageStatusUpdateDto) {
+    return this.messageService.updateStatus(
       messageStatusUpdateDto.messageId, 
       messageStatusUpdateDto.newStatus
     ); 
-
-    server.to(messageStatusUpdateDto.userIdToInform).emit("message-status-update", updatedMessage);
-    return updatedMessage;
   }
 
 }

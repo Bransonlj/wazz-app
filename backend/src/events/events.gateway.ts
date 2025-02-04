@@ -53,7 +53,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   async handleEvent(@MessageBody() data: MessageRequestDto, @ConnectedSocket() client: AuthSocket): Promise<EventResponseDto<string | Message>> {
     // verify clientId match
     try {
-      const message = await this.eventService.createAndSendMessage(data, this.server);
+      const message = await this.eventService.createAndSendMessage(data);
+      this.server.to(data.recipientId).emit("message", message);
       return {
         status: "success",
         data: message,
@@ -66,7 +67,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   @SubscribeMessage('message-status-update') 
   async handleMessageStatusUpdate(@MessageBody() data: MessageStatusUpdateDto): Promise<EventResponseDto<string | Message>> {
     try {
-      const updatedMessage = await this.eventService.updateMessageStatus(data, this.server);
+      const updatedMessage = await this.eventService.updateMessageStatus(data);
+      this.server.to(data.userIdToInform).emit("message-status-update", updatedMessage);
       return {
         status: "success",
         data: updatedMessage

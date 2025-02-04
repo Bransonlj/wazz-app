@@ -5,6 +5,8 @@ import * as mongoose from 'mongoose';
 
 export type SchemaDocument = HydratedDocument<Message>;
 
+export type SafeUser = Omit<User, "passwordHash">;
+
 export enum Status {
   SENT="sent",
   DELIVERED="delivered",
@@ -20,11 +22,11 @@ export class Message{
   message: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
-  sender: User;
+  sender: SafeUser;
 
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
-  recipient: User;
+  recipient: SafeUser;
 
   @Prop({
     type: String,
