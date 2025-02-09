@@ -7,8 +7,13 @@ export class UsersController {
   constructor(private userService: UsersService) {}
 
   @Get("")
-  findByUsername(@Query() query: UserQueryDto) {
-    return this.userService.findByUsername(query.username);
+  async findByUsername(@Query() query: UserQueryDto) {
+    const user = await this.userService.findByUsername(query.username);
+    if (!user) {
+      throw new NotFoundException(`User with username ${query.username} not found`);
+    }
+
+    return user;
   }
 
   @Get(":id")

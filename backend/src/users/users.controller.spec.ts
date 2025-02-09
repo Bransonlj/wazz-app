@@ -46,6 +46,14 @@ describe('UsersController', () => {
       expect(service.findByUsername).toHaveBeenCalledWith(user.username);
       expect(result).toEqual(user);
     });
+
+    it('should throw NotFoundException if user is not found', async () => {
+      const username = "bob123";
+      service.findByUsername.mockResolvedValue(null);
+
+      await expect(controller.findByUsername({ username })).rejects.toThrow(NotFoundException);
+      expect(service.findByUsername).toHaveBeenCalledWith(username);
+    });
   });
 
   describe('findById', () => {
