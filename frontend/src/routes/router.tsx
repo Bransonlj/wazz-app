@@ -1,8 +1,7 @@
 import { Route, Routes } from "react-router";
-import MessagingLayout from "../layouts/MessagingLayout";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
-import MainLayout from "@/layouts/main-layoute";
+import MainLayout from "@/layouts/main-layout";
 import Home from "@/pages/home";
 import MessagePage from "@/pages/message-page";
 
@@ -11,7 +10,7 @@ export default function Router() {
     <Routes>
       <Route element={ <MainLayout /> }>
       <Route index element={<Home />} />
-        <Route path='t' element={<MessagingLayout />}>
+        <Route path='t'>
           <Route index element={<MessagePage />} />
           <Route path=':id' element={<MessagePage />} />
         </Route>

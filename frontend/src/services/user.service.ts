@@ -23,4 +23,17 @@ export default class UserService extends BaseService {
         throw new Error(this._handleAxiosError<ErrorResponseDto>(error, axiosErrorResponseParser));
     });
   }
+
+  static async findByUsername(username: string): Promise<UserDto> {
+    const endpoint = `${url}`
+    return axios.get(endpoint, {
+      params: {
+        username,
+      }
+    })
+      .then(this._handleAxiosSuccess<UserDto>)
+      .catch(error => {
+        throw new Error(this._handleAxiosError<ErrorResponseDto>(error, axiosErrorResponseParser));
+    });
+  }
 }

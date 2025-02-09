@@ -4,6 +4,8 @@ import MessageList from "./message-list";
 import UserService from "@/services/user.service";
 import { UserConversationDto, UserDto } from "@/dto";
 import ErrorFeedback from "./error-feedback";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Separator } from "./ui/separator";
 
 interface UserConversationProps {
   selectedUser: string;
@@ -44,8 +46,15 @@ export default function UserConversation({ selectedUser, currentUser, conversati
   }
 
   return (
-    <div className="flex gap-4 border-black border w-full h-full">
-      <h2>{ data?.username || "unkown user" }</h2>
+    <div className="flex flex-col w-full h-full">
+      <div className="flex items-center">
+        <Avatar>
+          <AvatarImage src="avatar.png"></AvatarImage>
+          <AvatarFallback>{data.username[0]}</AvatarFallback>
+        </Avatar>
+        <h2 className="p-2 font-semibold">{data.username}</h2>
+      </div>
+      <Separator className="mt-2" />
       <MessageList onRead={onRead} conversation={conversation} currentUser={currentUser} />
       <MessageInput onSend={handleSendMessage} />
     </div>

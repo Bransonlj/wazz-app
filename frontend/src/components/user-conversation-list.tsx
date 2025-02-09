@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import UserCard from "./UserCard";
+import UserCard from "./user-card";
 import { UserDto } from "../dto";
 
 interface UserConversationListProps {
@@ -19,10 +19,15 @@ export default function UserConversationList({ users, selectedUser, unreadMessag
   }
 
   return (
-      <div className="flex flex-col gap-1">
+      <div className="w-36 flex flex-col h-full border-2 bg-emerald-50 border-rose-200 rounded-md overflow-hidden">
       {
         users.map(user => (
-          <UserCard key={user._id} numUnreadMessages={unreadMessages[user._id]?.length} username={user.username || "username not found"} active={user.username === selectedUser} onClick={() => handleSelectUser(user._id)} />
+          <UserCard 
+            key={user._id} 
+            numUnreadMessages={unreadMessages[user._id]?.length} 
+            username={user.username || "username not found"} 
+            active={user._id === selectedUser} 
+            onClick={() => handleSelectUser(user._id)} />
         ))
       }
       </div>

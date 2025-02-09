@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
 
 interface MessageInputProps {
   onSend: (value: string) => void;
@@ -13,9 +15,9 @@ export default function MessageInput({ onSend }: MessageInputProps) {
   }
 
   return (
-    <div>
-      <input className="border-indigo-700 border-2 rounded-md" placeholder="enter message" value={message} onChange={e => setMessage(e.target.value)} />
-      <button onClick={handleSendMessage} disabled={!message}>Send</button>
+    <div className="flex flex-col items-end">
+      <Textarea className="border-rose-200 bg-rose-50" placeholder="Enter message" value={message} onChange={e => setMessage(e.target.value)} />
+      <Button className="bg-emerald-500" onClick={handleSendMessage} size="sm" disabled={!message}>Send</Button>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import MessageBubble from "./message-bubble";
 import { MessageStatus } from "../enums";
 import { UserConversationDto } from "@/dto";
@@ -9,9 +9,31 @@ interface UserConversationProps {
   onRead?: (messageId: string, userId: string) => void;
 }
 
-export default function MessageList({ conversation, currentUser, onRead }: UserConversationProps) {
+export interface MessageListHandle {
+  scrollToBottom(): void;
+}
+
+const MessageList = forwardRef<MessageListHandle, UserConversationProps>(({
+  conversation, 
+  currentUser, 
+  onRead 
+}, ref) => {
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Function to scroll to the bottom
+  const scrollToBottom = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth", // Use "auto" for instant scroll
+      });
+    }
+  };
+
+  useImperativeHandle<MessageListHandle, MessageListHandle>(ref, () => ({
+    scrollToBottom,
+  }));
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -54,7 +76,7 @@ export default function MessageList({ conversation, currentUser, onRead }: UserC
   }
 
   return (
-    <div ref={scrollContainerRef} className="flex flex-col gap-1 overflow-y-scroll max-h-96">
+    <div ref={scrollContainerRef} className="min-h-0 flex-1 flex flex-col gap-1 overflow-y-auto p-2">
     {
       Object.keys(conversation.byMessageId).map(messageId => (
         <MessageBubble 
@@ -69,4 +91,6 @@ export default function MessageList({ conversation, currentUser, onRead }: UserC
     }
     </div>
   )
-}
+})
+
+export default MessageList;

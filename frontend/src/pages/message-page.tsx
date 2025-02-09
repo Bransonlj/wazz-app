@@ -1,4 +1,4 @@
-import Messages from "@/components/Messages";
+import Messages from "@/components/messages";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function MessagePage() {
@@ -6,7 +6,7 @@ export default function MessagePage() {
   const { currentUserId, currentUsername } = useAuth()
 
   if (!currentUserId || !currentUsername) {
-    return <div>Login to start messaging</div>
+    return <div className="p-4 font-semibold text-lg text-zinc-700">Login now to start messaging!</div>
   }
 
   return (

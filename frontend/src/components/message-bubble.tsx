@@ -11,9 +11,9 @@ export default function MessageBubble({ message, isSender, ...props }: MessageBu
   return (
     <div 
       {...props}
-      className={`${isSender ? "bg-green-300 self-end" : "bg-blue-300 self-start"}  rounded-lg p-1 flex flex-col gap-0 flex-none`}
+      className={`${isSender ? "bg-emerald-300 self-end" : "bg-blue-400 self-start"}  rounded-lg p-2 flex flex-col gap-0 flex-none`}
     >
-      { !isSender && <h2 className="text-lg font-semibold">{ message.sender.username }</h2>}
+      { !isSender && <h2 className="text-md font-semibold">{ message.sender.username }</h2>}
       <p>{message.message}</p>
       <div className="flex gap-3">
         <span>{new Date(message.createdAt).toLocaleTimeString()}</span>

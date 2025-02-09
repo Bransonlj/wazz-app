@@ -70,16 +70,18 @@ export function useSocketMessage(user: UserDto) {
       console.log("refreshing all messages")
       console.log(res);
       loadMessageState({ byUserId: res.byUserId, unreadMessageIdsByUser: res.unreadMessageIdsByUser });
-      // Next we have to send an update to for all messages with status < delivered
+      // Next we have to send an update to for all messages with status < delivered where recipient is current user
       res.undeliveredMessages.forEach(message => {
-        const updateMessageDto: MessageStatusUpdateDto = {
-          messageId: message._id,
-          newStatus: MessageStatus.DELIVERED,
-          userIdToInform: getOtherUserOfMessage(message, user._id)._id,
+        if (message.recipient._id === user._id) {
+          const updateMessageDto: MessageStatusUpdateDto = {
+            messageId: message._id,
+            newStatus: MessageStatus.DELIVERED,
+            userIdToInform: getOtherUserOfMessage(message, user._id)._id,
+          }
+          socket.emit("message-status-update", updateMessageDto);
+  
+          updateMessage({ ...message, status: MessageStatus.DELIVERED }, user._id);
         }
-        socket.emit("message-status-update", updateMessageDto);
-
-        updateMessage({ ...message, status: MessageStatus.DELIVERED }, user._id);
       });
     });
   }
