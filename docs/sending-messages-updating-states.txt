@@ -1,0 +1,22 @@
+title Client handshake with server & init
+
+
+participant Alice Client
+rparticipant Server
+database Database
+participant Bob Client
+
+
+Alice Client->Server:Send "get-all" event
+Server->Database:Request all messages for Alice
+Server<--Database:messages response
+Alice Client<--Server:event response with messages
+Alice Client->Alice Client:Store messages into state
+
+loop for each "undelivered" message
+
+Alice Client->Server:Send "message-status-update" event to "DELIVERED"
+
+Server->Database:Update message status to "DELIVERED"
+Alice Client->Alice Client:Update message in state to "DELIVERED"
+end

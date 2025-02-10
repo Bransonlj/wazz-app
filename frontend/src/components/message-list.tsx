@@ -70,7 +70,7 @@ const MessageList = forwardRef<MessageListHandle, UserConversationProps>(({
   }, [conversation]) // conversation state will affect the elements within the scroll container
   
   if (!conversation || Object.keys(conversation.byMessageId).length === 0) {
-    return <div>
+    return <div className="min-h-0 flex-1 flex justify-center items-center">
       Say something!
     </div>
   }

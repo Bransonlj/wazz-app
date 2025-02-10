@@ -75,11 +75,12 @@ export function useMessageState() {
         return prev;
       }
 
+      const newUnreadMessages = [...prev.unreadMessageIdsByUser[sender].slice(0, messageIndex), ...prev.unreadMessageIdsByUser[sender].slice(messageIndex + 1)];
       return {
         ...prev,
         unreadMessageIdsByUser: {
           ...prev.unreadMessageIdsByUser,
-          [sender]: prev.unreadMessageIdsByUser[sender].splice(messageIndex, 1),
+          [sender]: newUnreadMessages,
         }
       }
     });

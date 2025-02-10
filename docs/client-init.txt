@@ -1,0 +1,26 @@
+title Client handshake with server & initialization
+
+
+participant Alice Client
+rparticipant Server
+database Database
+participant Bob Client
+
+
+Alice Client->Server:Send "connect" event with JWT
+Server->Server:Authorize client JWT
+Server->Server:client socket join private room (userid)
+Alice Client->Server:Send "get-all" event
+Server->Database:Request all messages for Alice
+Server<--Database:messages response
+Alice Client<--Server:event response with messages
+Alice Client->Alice Client:Store messages into state
+
+loop for each "undelivered" message
+
+Alice Client->Server:Send "message-status-update" event to "DELIVERED"
+
+Server->Database:Update message status to "DELIVERED"
+Database->Bob Client:Send "message-status-update" event if Bob is connected
+Alice Client->Alice Client:Update message in state to "DELIVERED"
+end
